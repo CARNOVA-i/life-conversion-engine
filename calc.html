@@ -1,0 +1,673 @@
+<!-- Existential Calculator — V7.3.3: SUPER NOVA (Classic Skin, Wix single-file) -->
+<div id="existential-calculator-root"></div>
+<canvas id="livebg" aria-hidden="true"></canvas>
+<style>
+  :root{--bg:#0b1020;--fg:#e6f0ff;--muted:#9fb3ffb3;--accent:#8ef0ff;--danger:#ff4d6d;--ok:#7dffb3;--card:#121a33aa;--shadow:0 10px 30px rgba(0,0,0,.25);--radius:16px}
+  @keyframes glitch{0%{clip-path:inset(0 0 0 0)}15%{clip-path:inset(6% 0 0 0) translateX(-2px)}35%{clip-path:inset(0 0 12% 0) translateX(2px)}55%{clip-path:inset(10% 0 0 0)}75%{clip-path:inset(0 0 18% 0) translateX(-1px)}}
+  *{box-sizing:border-box} html,body{width:100%}
+  body{margin:0;color:var(--fg);background:radial-gradient(1200px 700px at 50% -200px,#243266,var(--bg)) fixed;overflow-x:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial}
+
+  /* Page-wide live background canvas under everything */
+  #livebg{position:fixed;inset:0;width:100vw;height:100vh;display:block;z-index:0;pointer-events:none}
+
+  /* Lift content above the canvas */
+  main, header, section, .wrap, .noise, .vis, .toast, .konami { position:relative; z-index:2; }
+  .noise{pointer-events:none;position:fixed;inset:0;background:repeating-radial-gradient(circle at 20% 20%,#ffffff04 0 2px,transparent 2px 4px),repeating-radial-gradient(circle at 80% 80%,#ffffff02 0 1px,transparent 1px 3px);mix-blend-mode:soft-light;filter:saturate(.7) contrast(1.2);z-index:1}
+
+  header{position:sticky;top:0;z-index:5;backdrop-filter:blur(10px) saturate(1.2);background:#0b1020bf;box-shadow:var(--shadow)}
+  .wrap { max-width: 100%; margin: 0 auto; padding: 14px; box-sizing: border-box; }
+
+  /* Two-panel grid; left smaller than right on wide view */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 800px) { .grid { grid-template-columns: 0.8fr 1.2fr; } } /* ← V7.3 ratio */
+
+  .card { background: linear-gradient(145deg,#0e1a3a,#0a132a); padding: 14px; border-radius: 12px; border:1px solid #2a3b7a80; box-sizing: border-box; box-shadow:var(--shadow) }
+
+  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#bcd1ff;margin:8px 0 4px}
+  input,select,button{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #3a4d9a66;background:#0e1633;color:var(--fg);outline:none;box-shadow:inset 0 0 0 1px #ffffff05;font-size:14px}
+  input[type="range"]{padding:0;height:36px;background:transparent}
+  .row{display:flex;gap:10px} .row>*{flex:1;min-width:0}
+  .units{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .units label{margin:0;font-size:12px;text-transform:none;letter-spacing:0}
+  .units input[type="radio"]{width:auto;margin-right:8px;accent-color:#8ef0ff}
+  .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .btn{cursor:pointer;user-select:none;font-weight:700;letter-spacing:.02em;background:linear-gradient(160deg,#1b2a66,#10204a);border:1px solid #6db6ff55;transition:transform .08s,box-shadow .2s,background .2s}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 10px 20px #0008}
+  .btn:active{transform:translateY(0)} .btn.panic{background:linear-gradient(160deg,#3b0f1f,#15040c);border-color:#ff6b8a88}
+  .tiny{font-size:12px;color:#a6b7ff;opacity:.85}
+
+  .out{display:grid;gap:10px;grid-template-columns:1fr}
+  @media(min-width:900px){.out{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .out .tile{background:#0b142e;border:1px dashed #456;border-radius:14px;padding:12px;min-height:82px;overflow:hidden;min-width:0}
+
+  .kpi{font-size:clamp(16px,2vw,20px);color:#b7c8ff}.kpi b{font-size:clamp(22px,4vw,34px);color:var(--accent)}
+  .countdown{font-variant-numeric:tabular-nums;font-size:clamp(20px,5vw,44px);line-height:1.1;letter-spacing:.02em;white-space:normal;overflow-wrap:anywhere;word-break:break-word;padding-right:2px}
+  @media (max-width: 900px){ .countdown{font-size:clamp(18px,7vw,36px)} .kpi b{font-size:clamp(20px,6vw,30px)} }
+
+  .pulse{box-shadow:0 0 0 0 rgba(142,240,255,.55);animation:pulse 1.4s infinite}@keyframes pulse{to{box-shadow:0 0 0 18px rgba(142,240,255,0)}}
+  .mood{height:14px;border-radius:8px;background:linear-gradient(90deg,#3fdc88,#f6d365,#ff6b6b)}
+  .quote{font-style:italic;color:#b7c8ff}
+  .footer{margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .switch{display:flex;gap:8px;align-items:center}.switch input{width:auto}
+  .vis{position:fixed;inset:-60px -60px auto auto;height:220px;width:220px;pointer-events:none;opacity:.22;filter:blur(18px) hue-rotate(0deg);transition:filter .2s;background:radial-gradient(closest-side,#8ef0ff,transparent),radial-gradient(closest-side,#ff4d6d,transparent 60%),radial-gradient(closest-side,#7dffb3,transparent 60%);mix-blend-mode:screen;border-radius:50%}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#11193b;border:1px solid #4b64c7aa;border-radius:12px;padding:8px 12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .marquee{overflow:hidden;border-top:1px solid #234;margin-top:12px;padding-top:8px;color:#9fb3ffcc;font-size:12px;white-space:normal;overflow-wrap:anywhere}
+  .morse{font-family:ui-monospace,Menlo,Consolas,monospace;color:#9fe3ff}
+  .konami{position:fixed;top:6px;right:8px;opacity:.35;font-size:11px}
+  .dial{display:flex;align-items:center;gap:10px}
+  .dial svg{width:100%;max-width:220px;display:block}
+  .dial .label{font-size:12px;color:#bcd1ff;text-transform:uppercase;letter-spacing:.12em}
+  .dial .num{font-variant-numeric:tabular-nums;font-size:clamp(18px,4vw,28px)}
+  details{margin-top:10px} summary{cursor:pointer;color:#9fc6ff}
+
+  #eventBox{display:none;}
+  main, header, section, .wrap { max-width:100%; overflow-x:hidden; }
+  .out small, .chaos small, .vis small, footer small { white-space:normal!important; overflow-wrap:break-word; word-break:break-word; }
+</style>
+
+<div class="noise" aria-hidden="true"></div>
+<div class="vis" id="vis" aria-hidden="true"></div>
+<header>
+  <div class="wrap">
+    <h1>🌌 The <span class="blink">Existential Life-Force Conversion Calculator</span>™</h1>
+    <p class="lead">SUPER NOVA mode engaged. More units. More knobs. More nonsense.</p>
+  </div>
+</header>
+
+<main class="wrap grid" id="app">
+  <!-- Inputs -->
+  <section class="card" aria-label="Inputs">
+    <div class="row">
+      <div>
+        <label for="mode">Target mode</label>
+        <select id="mode">
+          <option value="demise" selected>Demise (statistical)</option>
+          <option value="event">Custom Event</option>
+        </select>
+      </div>
+      <div id="eventBox">
+        <label for="eventDate">Event date</label>
+        <input id="eventDate" type="datetime-local" />
+        <div class="tiny">If set, we count to this instead of demise.</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px" id="birthRow">
+      <div>
+        <label for="dob">Birth date</label>
+        <input id="dob" type="date" />
+      </div>
+      <div>
+        <label for="coffee">Avg daily coffee (cups)</label>
+        <input id="coffee" type="number" min="0" step="0.5" value="2" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px" id="expectRows">
+      <div>
+        <label for="expectPreset">Life expectancy preset</label>
+        <select id="expectPreset">
+          <option value="custom">Custom</option>
+          <option value="global">Global ~73</option>
+          <option value="canada">Canada ~82</option>
+          <option value="usa">USA ~77</option>
+          <option value="japan">Japan ~84</option>
+          <option value="human80">Average Human ~80</option>
+          <option value="ferret">Average Ferret ~7</option>
+          <option value="methuselah">Methuselah Mode ~969</option>
+          <option value="friday">Friday Mood ~0.005</option>
+          <option value="switzerland">Switzerland ~84</option>
+          <option value="australia">Australia ~83</option>
+          <option value="italy">Italy ~84</option>
+          <option value="india">India ~70</option>
+          <option value="brazil">Brazil ~75</option>
+          <option value="russia">Russia ~72</option>
+          <!-- fun critters -->
+          <option value="vampire">Vampire ~500</option>
+          <option value="hamster">Hamster ~3</option>
+          <option value="housefly">Housefly ~0.05</option>
+          <option value="mayfly">Mayfly ~0.003</option>
+        </select>
+      </div>
+      <div>
+        <label for="expect">Base expectancy (years)</label>
+        <input id="expect" type="number" min="0.001" max="1200" value="80" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label for="uncertainty">Quantum uncertainty</label>
+        <input id="uncertainty" type="range" min="0" max="100" value="12" />
+        <div class="tiny">Crank for chaos. UI glitches scale with it.</div>
+      </div>
+      <div>
+        <label for="manualOffset">Manual offset (± years)</label>
+        <input id="manualOffset" type="number" step="0.5" value="0" />
+      </div>
+    </div>
+
+    <!-- Lifestyle tweaks (satire) -->
+    <div class="row" style="margin-top:8px" id="lifeTweaks">
+      <div>
+        <label for="smoker">Smoker</label>
+        <select id="smoker">
+          <option value="none" selected>None</option>
+          <option value="light">Light</option>
+          <option value="heavy">Heavy</option>
+        </select>
+      </div>
+      <div>
+        <label for="exercise">Exercise (hrs/week)</label>
+        <input id="exercise" type="number" min="0" max="20" step="1" value="2" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px" id="lifeTweaks2">
+      <div>
+        <label for="sleep">Sleep quality</label>
+        <select id="sleep">
+          <option value="ok" selected>OK</option>
+          <option value="poor">Poor</option>
+          <option value="great">Great</option>
+        </select>
+      </div>
+      <div>
+        <label for="stress">Stress level</label>
+        <select id="stress">
+          <option value="med" selected>Medium</option>
+          <option value="low">Low</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="switch" style="margin-top:10px">
+      <input type="checkbox" id="ultra" />
+      <label for="ultra">Unlock Ultra-Absurd units</label>
+    </div>
+
+    <label style="margin-top:10px">Preferred absurd unit</label>
+    <div class="units" id="unitBase">
+      <label><input type="radio" name="unit" value="jellybeans" checked /> Jellybeans</label>
+      <label><input type="radio" name="unit" value="giraffe-necks" /> Giraffe necks</label>
+      <label><input type="radio" name="unit" value="lunar-cheese" /> Lunar cheese wheels</label>
+      <label><input type="radio" name="unit" value="bananas" /> Bananas</label>
+      <label><input type="radio" name="unit" value="furlongs" /> Furlongs walked</label>
+      <label><input type="radio" name="unit" value="paperclip-chains" /> Paperclip chains</label>
+      <label><input type="radio" name="unit" value="netflix-intros" /> Netflix intros skipped</label>
+      <label><input type="radio" name="unit" value="toaster-cycles" /> Toaster cycles</label>
+      <label><input type="radio" name="unit" value="delta-v" /> Δv (m/s, 1 kg)</label>
+      <label><input type="radio" name="unit" value="chuck-norris" /> = to Chuck Norris</label>
+      <label><input type="radio" name="unit" value="frogs-hats" /> Frogs in bowler hats</label>
+      <label><input type="radio" name="unit" value="pyramid-heights" /> Great Pyramid stacks</label>
+      <label><input type="radio" name="unit" value="n64-cables" /> N64 cable lengths</label>
+    </div>
+    <div class="units" id="unitUltra" style="display:none; margin-top:6px">
+      <label><input type="radio" name="unit" value="kilomeow" /> Kilomeow (cats)</label>
+      <label><input type="radio" name="unit" value="schrodingers" /> Schrödingers</label>
+      <label><input type="radio" name="unit" value="lhc-laps" /> LHC laps</label>
+      <label><input type="radio" name="unit" value="hotdog-lines" /> Hotdog-Lines</label>
+    </div>
+
+    <div class="footer">
+      <div class="switch">
+        <input type="checkbox" id="beep" checked />
+        <label for="beep">Beep every elapsed 1,000 ms (sorry)</label>
+      </div>
+      <div class="switch">
+        <input type="checkbox" id="muteQuotes" />
+        <label for="muteQuotes">Mute unsolicited philosophy</label>
+      </div>
+      <div class="switch">
+        <input type="checkbox" id="bgToggle" checked />
+        <label for="bgToggle">Live background (stars + nebula)</label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="calc">Distill my destiny</button>
+      <button class="btn panic" id="panic">Panic</button>
+      <button class="btn" id="share">Share My Doom</button>
+      <button class="btn" id="linkOnly" style="flex:0 0 auto;padding:0 10px;font-size:12px" title="Copy link only">🔗</button>
+    </div>
+  </section>
+
+  <!-- Outputs -->
+  <section class="card" aria-live="polite" aria-label="Outputs">
+    <div class="out" style="margin-bottom:10px">
+      <div class="tile">
+        <div class="kpi"><span id="labelDemise">Predicted <b>time of statistical demise</b>:</span><span id="labelEvent" style="display:none">Target <b>event time</b>:</span></div>
+        <div id="eta" class="kpi" style="margin-top:4px;font-size:clamp(16px,3.4vw,28px)">—</div>
+        <div class="tiny">Effective expectancy: <span id="effExp">—</span> years</div>
+      </div>
+      <div class="tile pulse">
+        <div class="kpi">Countdown (ms precision, because anxiety):</div>
+        <div id="count" class="countdown">—</div>
+        <div class="mood" id="mood" title="Your 'mood color'—totally scientific."></div>
+      </div>
+    </div>
+
+    <div class="out" style="margin-top:6px">
+      <div class="tile">
+        <div class="kpi"><span id="absurdPrefix">Remaining life in </span><b id="unitLabel">jellybeans</b>:</div>
+        <div id="absurd" class="countdown" style="font-size:clamp(18px,3.6vw,36px)">—</div>
+        <div class="tiny">Assumptions are irresponsible and numerous. You were warned.</div>
+      </div>
+      <div class="tile">
+        <div class="kpi">The <b>coffee effect</b> on your fate:</div>
+        <div id="coffeeKarma" class="countdown" style="font-size:clamp(18px,3.2vw,30px)">—</div>
+        <div class="tiny">Model: each cup shifts entropy ±7 minutes, then chaosified.</div>
+      </div>
+    </div>
+
+    <div class="tile" style="margin-top:10px">
+      <div class="row" style="align-items:center">
+        <div style="flex:1" class="dial">
+          <svg viewBox="0 0 120 120" id="chaosDial" aria-label="Chaos Dial">
+            <defs><filter id="glow"><feGaussianBlur stdDeviation="2.2" result="B"/><feMerge><feMergeNode in="B"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#224" stroke-width="10"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#183a5a" stroke-width="10" stroke-dasharray="314" stroke-dashoffset="0"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#8ef0ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" id="dialArc" filter="url(#glow)"/>
+            <line x1="60" y1="60" x2="60" y2="14" stroke="#8ef0ff" stroke-width="3" id="dialHand" />
+            <text x="60" y="70" text-anchor="middle" class="num" id="dialNum">12%</text>
+            <text x="60" y="90" text-anchor="middle" class="label">Chaos</text>
+          </svg>
+        </div>
+        <div style="flex:2">
+          <div class="quote" id="quote">“Time is just entropy’s UX.” — Nova</div>
+          <details>
+            <summary>Disclaimer (tap to expand)</summary>
+            <div class="tiny" style="margin-top:6px">
+              This calculator is intended solely for <b>comical relief</b>. Any resemblance to actual predicted demise — past, present, or future — is purely coincidental. 
+              Do not make life decisions based on jellybeans, giraffe necks, Δv, or Chuck Norris decimals. — Carson & Nova
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="marquee" id="marquee">
+      <span class="morse">… Midnight ritual armed. If the clock strikes 00:00, you may hear whispers in Morse: TICK TOCK.</span>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="konami" aria-hidden="true">Konami Mode: OFF</div>
+
+<script>
+(()=>{const $=s=>document.querySelector(s),Q=s=>Array.from(document.querySelectorAll(s)),fmt=n=>n.toLocaleString(),clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+
+/* Audio */
+const audio=new(window.AudioContext||window.webkitAudioContext)();let beepOn=true;
+function blip(f=880,d=.05,type='sine',g=.11){if(!beepOn)return;const t0=audio.currentTime,o=audio.createOscillator(),g1=audio.createGain();o.type=type;o.frequency.value=f;g1.gain.value=g;o.connect(g1).connect(audio.destination);o.start(t0);o.stop(t0+d)}
+function errorChord(){const base=340;[0,4,7].forEach((semi,i)=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=base*Math.pow(2,semi/12);o.type='square';g.gain.value=.06;o.connect(g).connect(audio.destination);const t=audio.currentTime+i*0.02;o.start(t);o.stop(t+0.16+i*0.01)})}
+function morsePlay(text="TICK TOCK"){const map={A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--.."," ":" "};const dit=.11;let t=audio.currentTime+.2;text.toUpperCase().split('').forEach(ch=>{if(ch===' '){t+=7*dit;return}(map[ch]||'').split('').forEach(sym=>{const dur=sym==='.'?dit:3*dit;const o=audio.createOscillator(),g=audio.createGain();o.type='triangle';o.frequency.value=700;g.gain.value=.07;o.connect(g).connect(audio.destination);o.start(t);o.stop(t+dur);t+=dur+dit});t+=3*dit})}
+
+/* State */
+const S={targetTime:null,lastSecondTick:null,quantum:.12,coffeeCups:2,expectancyYears:80,unit:'jellybeans',quotesMuted:false,konami:false,ultra:false,effExpYears:80,mode:'demise',eventDate:null};
+
+/* Elements */
+const modeSel=$("#mode"), eventBox=$("#eventBox"),
+      birthRow=$("#birthRow"), expectRows=$("#expectRows"), lifeTweaks=$("#lifeTweaks"), lifeTweaks2=$("#lifeTweaks2"),
+      dob=$("#dob"), coffee=$("#coffee"), expect=$("#expect"), preset=$("#expectPreset"), offset=$("#manualOffset"), unc=$("#uncertainty"),
+      ultraToggle=$("#ultra"), unitUltra=$("#unitUltra"),
+      calcBtn=$("#calc"), panicBtn=$("#panic"), shareBtn=$("#share"), linkOnlyBtn=$("#linkOnly"),
+      count=$("#count"), eta=$("#eta"), unitLabel=$("#unitLabel"), absurd=$("#absurd"), mood=$("#mood"),
+      quote=$("#quote"), marquee=$("#marquee"), toast=$("#toast"), vis=$("#vis"), effExp=$("#effExp"),
+      labelDemise=$("#labelDemise"), labelEvent=$("#labelEvent"), absurdPrefix=$("#absurdPrefix"), konamiLabel=document.querySelector(".konami");
+const dialArc=$("#dialArc"), dialHand=$("#dialHand"), dialNum=$("#dialNum");
+
+/* Constants */
+const CIRC_EARTH=40075000, HOTDOG=0.1524, LHC=26659, CAT=0.46, FURLONG=201.168, PAPERCLIP=0.033, INTRO=5000, TOAST=180000, PYRAMID_H=146.6, N64=2.0;
+
+/* Helpers */
+const walkMeters=ms=> (ms/1000)*1.4;
+function chaos(x){const q=S.quantum,mag=.18*q,r=(Math.random()-.5)*2;return x*(1+r*mag)}
+function labelFor(u){return({
+  'jellybeans':'jellybeans','giraffe-necks':'giraffe necks','lunar-cheese':'lunar cheese wheels','bananas':'bananas',
+  'furlongs':'furlongs walked','paperclip-chains':'paperclip chains','netflix-intros':'Netflix intros skipped','toaster-cycles':'toaster cycles',
+  'delta-v':'Δv (m/s, 1 kg)','chuck-norris':'Chuck Norris equivalents','frogs-hats':'frogs in bowler hats',
+  'pyramid-heights':'Great Pyramid stacks','n64-cables':'N64 cable lengths',
+  'kilomeow':'kilomeow (cats)','lhc-laps':'LHC laps','hotdog-lines':'hotdog-lines (Earth wraps)','schrodingers':'Schrödingers'
+})[u]||u}
+
+/* Units */
+const baseUnits={
+  'jellybeans':ms=>Math.max(0,Math.floor(chaos((ms/60000)*7))),
+  'giraffe-necks':ms=>Math.max(0,Math.floor(chaos(walkMeters(ms)/2.4))),
+  'lunar-cheese':ms=>Math.max(0,Math.floor(chaos(((ms/60000)*0.1)/12))),
+  'bananas':ms=>Math.max(0,Math.floor(chaos((ms/60000)*0.5))),
+  'furlongs':ms=>Math.max(0,Math.floor(chaos(walkMeters(ms)/FURLONG))),
+  'paperclip-chains':ms=>Math.max(0,Math.floor(chaos(walkMeters(ms)/PAPERCLIP))),
+  'netflix-intros':ms=>Math.max(0,Math.floor(chaos(ms/INTRO))),
+  'toaster-cycles':ms=>Math.max(0,Math.floor(chaos(ms/TOAST))),
+  'delta-v':ms=>{ const E=80*(ms/1000); const dv=Math.sqrt(2*E); return Math.max(0,Math.floor(chaos(dv))); },
+  'chuck-norris':ms=>{ const t=ms/1000; const x=1-Math.exp(-t/1e9); return Math.min(0.99999999, x*(0.98)); },
+  'frogs-hats':ms=>Math.max(0,Math.floor(chaos((ms/60000)*0.42))),
+  'pyramid-heights':ms=>Math.max(0,Math.floor(chaos((walkMeters(ms))/PYRAMID_H))),
+  'n64-cables':ms=>Math.max(0,Math.floor(chaos((walkMeters(ms))/N64))),
+};
+const ultraUnits={
+  'kilomeow':ms=>Math.max(0,Math.floor(chaos(walkMeters(ms)/CAT))),
+  'lhc-laps':ms=>Math.max(0,Math.floor(chaos(walkMeters(ms)/LHC))),
+  'hotdog-lines':ms=>{const dogs=(ms/60000)*0.2;const meters=dogs*HOTDOG;return Math.max(0,Math.floor(chaos(meters/CIRC_EARTH)));},
+  'schrodingers':ms=>{const mins=ms/60000;return Math.max(0,Math.floor(chaos(Math.pow(mins,0.5+S.quantum)*3))); }
+};
+const units={...baseUnits,...ultraUnits};
+
+/* Special formatters */
+function formatValue(u,val){
+  if(u==='chuck-norris'){return Number(val).toFixed(8)}
+  if(u==='delta-v'){return fmt(val)}
+  return fmt(val);
+}
+
+/* Expectancy presets + lifestyle (satire) */
+function presetValue(key){
+  return ({custom:null, global:73, canada:82, usa:77, japan:84, human80:80, ferret:7, methuselah:969, friday:0.005,
+    switzerland:84, australia:83, italy:84, india:70, brazil:75, russia:72, vampire:500, hamster:3, housefly:0.05, mayfly:0.003})[key];
+}
+function lifestyleDeltaYears(){
+  let d=0;
+  d+=({none:0, light:-2, heavy:-6})[$("#smoker").value]||0;
+  d+=Math.min((+$("#exercise").value)*0.2,5);
+  d+=({poor:-2, ok:0, great:2})[$("#sleep").value]||0;
+  d+=({low:1, med:0, high:-2})[$("#stress").value]||0;
+  d+=parseFloat($("#manualOffset").value||'0')||0;
+  return d;
+}
+function computeEffectiveExpectancy(){
+  const key = ($("#expectPreset").value || 'custom').toLowerCase();
+  const p=presetValue(key);
+  const base = (p==null)? (parseFloat($("#expect").value||'80')||80) : p;
+  const eff = clamp(base + lifestyleDeltaYears(), 0.001, 1200);
+  S.expectancyYears=base; S.effExpYears=eff; $("#effExp").textContent=eff.toFixed(eff<10?3:1);
+  if(p!=null) $("#expect").value=p;
+}
+
+/* Target time (demise or event) */
+function calcTarget(){
+  S.mode=$("#mode").value;
+  if(S.mode==='event'){
+    const raw=$("#eventDate").value;
+    if(!raw) return null;
+    const t=new Date(raw);
+    return isNaN(t)?null:t;
+  }else{
+    if(!$("#dob").value) return null;
+    const birth=new Date($("#dob").value+"T12:00:00Z"); if(isNaN(birth)) return null;
+    computeEffectiveExpectancy();
+    let baseMillis=birth.getTime()+S.effExpYears*365.2425*24*3600*1000;
+    const direction=(new Date().getDate()%2===0)?1:-1;
+    const coffeeShift=(parseFloat($("#coffee").value||'0')||0)*7*60*1000*direction;
+    const yearsSmear=(Math.random()-.5)*2*(S.effExpYears*S.quantum*0.25);
+    const quantumShift=yearsSmear*365.2425*24*3600*1000;
+    return new Date(baseMillis + coffeeShift + quantumShift);
+  }
+}
+
+/* ===== Chaos Dial (needle + arc perfectly aligned) ===== */
+const CIRC = 2 * Math.PI * 50;         // circumference for r=50
+const SWEEP = 270;                      // visible sweep in degrees
+const ARC_LEN = CIRC * (SWEEP/180);     // visible arc length
+const START_DEG = -135;                 // arc starts at -135° (left)
+
+function renderDial(){
+  const wobble = Math.sin(Date.now()/180)*(S.quantum*6);
+  const q = clamp(S.quantum, 0, 1);
+  const deg = clamp(q*SWEEP + wobble, 0, SWEEP);   // 0..270
+  const A = START_DEG + deg;                       // absolute angle in degrees
+
+  // Needle (cartesian, 0° = +X axis)
+  const th = A * Math.PI/180;
+  const nx = 60 + 46 * Math.cos(th);
+  const ny = 60 + 46 * Math.sin(th);
+  $("#dialHand").setAttribute('x2', nx.toFixed(2));
+  $("#dialHand").setAttribute('y2', ny.toFixed(2));
+
+  // Arc: show a single dash of length ARC_LEN whose *end* sits at angle A
+  // stroke starts at 0° (3 o'clock). We need the dash end at fraction f of CIRC.
+  const f = ((A % 360)+360)%360 / 360;             // normalize 0..1
+  const dashOffset = ARC_LEN - (f * CIRC);
+  $("#dialArc").setAttribute('stroke-dasharray', `${ARC_LEN} ${CIRC}`);
+  $("#dialArc").setAttribute('stroke-dashoffset', `${dashOffset}`);
+
+  $("#dialNum").textContent = `${Math.round(q*80)}%`;
+}
+
+/* Render loop */
+function render(){
+  if(!S.targetTime){$("#count").textContent='—';$("#eta").textContent='—';renderDial();return}
+  const now=new Date(); let msLeft=S.targetTime-now; if(msLeft<0) msLeft=0;
+  const ms=Math.floor(msLeft%1000),sec=Math.floor(msLeft/1000)%60,min=Math.floor(msLeft/60000)%60,hr=Math.floor(msLeft/3600000)%24,day=Math.floor(msLeft/86400000);
+  $("#count").textContent=`${day}d ${pad(hr)}h ${pad(min)}m ${pad(sec)}s ${pad(ms,3)}ms`;
+  const secStamp=Math.floor(msLeft/1000); if(S.lastSecondTick!==secStamp){S.lastSecondTick=secStamp; if(beepOn&&msLeft>0) blip(920,.03,'sine',.06)}
+  $("#unitLabel").textContent=labelFor(S.unit);
+  const raw=(units[S.unit]||(()=>0))(msLeft);
+  $("#absurd").textContent=formatValue(S.unit, raw);
+  const sign=(new Date().getDate()%2===0)?'+':'−',minShift=(parseFloat($("#coffee").value||'0')||0)*7,warped=Math.floor(chaos(minShift));$("#coffeeKarma").textContent=`${sign}${Math.abs(warped)} minutes / day`;
+  const opts={weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'};
+  $("#eta").textContent=S.targetTime.toLocaleString(undefined,opts);
+  if(S.mode==='event'){labelDemise.style.display='none';labelEvent.style.display='inline'; if(absurdPrefix) absurdPrefix.textContent='Remaining until event in '; }
+  else {labelDemise.style.display='inline';labelEvent.style.display='none'; if(absurdPrefix) absurdPrefix.textContent='Remaining life in '; }
+
+  // mood bar + background hue
+  let originTime = (S.mode==='event' && $("#dob").value) ? new Date($("#dob").value+"T12:00:00Z") : new Date(Date.now()-1);
+  const lifespan=S.targetTime-originTime, elapsed=now-originTime, t=clamp(elapsed/Math.max(lifespan,1),0,1); const pct=Math.floor(t*100);
+  $("#mood").style.background=`linear-gradient(90deg,#3fdc88 0%, #f6d365 ${pct}%, #ff6b6b 100%)`;
+  const scrollFactor=clamp(window.scrollY/600,0,1), hue=(S.quantum*240)+scrollFactor*120; $("#vis").style.filter=`blur(${8+S.quantum*18}px) hue-rotate(${hue}deg)`;
+  renderDial();
+}
+function pad(n,len=2){return String(n).padStart(len,'0')}
+
+/* Quotes (rotating) */
+const quotes=[
+  '“Time is just entropy’s UX.” — Nova',
+  '“You are the glitch you wish to see in the matrix.” — Also Nova',
+  '“If cause precedes effect, why is coffee before emails?” — Maybe Nova',
+  '“Memento mori, but with confetti.” — Nova',
+  '“Statistics are spells; assumptions are the wand.” — Nova',
+  '“Be the rounding error.” — Nova',
+  '"Calibrated to the 16th cheese string — Carson & Nova"', 
+  '"Brought together by dark matter and bad decisions — Also Nova"',
+  '"Reality is an illusion, albeit a very persistent one — Carson & Nova"',
+]; let qi=0; function cycleQuote(){if(S.quotesMuted)return; qi=(qi+1)%quotes.length; $("#quote").textContent=quotes[qi]} setInterval(cycleQuote,8000);
+
+/* Signatures for Share */
+const signatures=[
+  "Certified by the International Bureau of Absurd Measurements — also Nova",
+  "Prepared at 3AM by a possibly sentient entity — also Nova",
+  "Calibrated using Schrödinger’s cat (he’s fine) — Carson & Nova",
+  "Officially certified nonsense — Nova",
+  "May contain traces of existential dread — also Nova",
+  "Doom calculated and blessed by Carson & Nova",
+  "Time spent on this calculator is time you will never get back — Nova",
+  "Powered by caffeine and questionable life choices — Nova",
+];
+
+/* Events wiring */
+document.addEventListener('click',()=>{audio.resume&&audio.state!=="running"&&audio.resume()},{once:true});
+modeSel.addEventListener('change',()=>{
+  const isEvent=modeSel.value==='event';
+  eventBox.style.display=isEvent?'block':'none';
+  birthRow.style.display=isEvent?'none':'flex';
+  expectRows.style.display=isEvent?'none':'flex';
+  lifeTweaks.style.display=isEvent?'none':'flex';
+  lifeTweaks2.style.display=isEvent?'none':'flex';
+});
+$("#expectPreset").addEventListener('change', computeEffectiveExpectancy);
+['#smoker','#exercise','#sleep','#stress','#manualOffset'].forEach(sel=>$(sel).addEventListener('input', computeEffectiveExpectancy));
+$("#calc").addEventListener('click',()=>{S.coffeeCups=parseFloat($("#coffee").value||'0')||0; S.quantum=Math.pow((parseFloat($("#uncertainty").value)||0)/100,1.2); S.targetTime=calcTarget(); S.lastSecondTick=null; if(!S.targetTime){toastMsg(S.mode==='event'?"Please set a valid event date.":"Please enter a valid birth date.");errorChord();return} toastMsg(S.mode==='event'?"Event locked in. Prepare the rituals.":"Reality committed. Try not to panic."); render();});
+$("#panic").addEventListener('click',()=>{document.body.style.filter='contrast(1.25) saturate(1.2) hue-rotate(20deg)';errorChord();shake($("#panic"));toastMsg("Panic acknowledged. Nothing was solved. You feel oddly better.");setTimeout(()=>document.body.style.filter='',800)});
+Q('input[name="unit"]').forEach(r=>r.addEventListener('change',()=>{S.unit=r.value;$("#unitLabel").textContent=labelFor(S.unit)}));
+$("#uncertainty").addEventListener('input',()=>{const raw=parseFloat($("#uncertainty").value)/100;S.quantum=Math.pow(raw,1.2);const cards=Q('.card');const intensity=Math.floor(S.quantum*12);cards.forEach(c=>{c.style.boxShadow=`0 10px 30px rgba(0,0,0,.25), 0 0 ${2+intensity}px ${Math.max(0,intensity-4)}px #83e9ff22`;c.style.animation=S.quantum>.6?`glitch ${0.8 - S.quantum*0.5}s steps(2,end) infinite`:'none'})});
+$("#beep").addEventListener('change',e=>{beepOn=e.target.checked;if(beepOn) blip(1000,.06,'sine',.07)});
+$("#muteQuotes").addEventListener('change',e=>{S.quotesMuted=e.target.checked;if(!S.quotesMuted) cycleQuote();toastMsg(S.quotesMuted?'Philosophy muted.':'Philosophy re-enabled.')});
+ultraToggle.addEventListener('change',e=>{S.ultra=e.target.checked;unitUltra.style.display=S.ultra?'grid':'none';if(!S.ultra && ['kilomeow','schrodingers','lhc-laps','hotdog-lines'].includes(S.unit)){S.unit='jellybeans';document.querySelector('input[name="unit"][value="jellybeans"]').checked=true;$("#unitLabel").textContent=labelFor(S.unit)}});
+
+/* ====== SHARE PACK (compact + URL-safe) ====== */
+const DEFAULTS = { mode:'demise', eventDate:'', dob:'', coffee:2, preset:'custom', expect:80, offset:0,
+  smoker:'none', exercise:2, sleep:'ok', stress:'med', uncertainty:12, unit:'jellybeans', ultra:0 };
+
+function currentDoomData(){
+  return { mode:$("#mode").value, eventDate:$("#eventDate").value, dob:$("#dob").value, coffee:+($("#coffee").value||0),
+    preset:$("#expectPreset").value, expect:+($("#expect").value||0), offset:+(parseFloat($("#manualOffset").value)||0),
+    smoker:$("#smoker").value, exercise:+($("#exercise").value||0), sleep:$("#sleep").value, stress:$("#stress").value,
+    uncertainty:+(parseFloat($("#uncertainty").value)||0), unit:S.unit, ultra:S.ultra?1:0, v:'7.3.3' };
+}
+function pruneDefaults(obj){const out={};for(const k in obj){const def=(k in DEFAULTS)?DEFAULTS[k]:undefined; if(obj[k]!==def&&obj[k]!==''&&obj[k]!==null) out[k]=obj[k];} return out;}
+function b64urlEncode(str){const b64=btoa(unescape(encodeURIComponent(str)));return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function b64urlDecode(b64url){const b64=b64url.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(b64url.length/4)*4,'=');const utf8=atob(b64);return decodeURIComponent(escape(utf8))}
+function doomLink(){const compact=pruneDefaults(currentDoomData());const encoded=b64urlEncode(JSON.stringify(compact));return window.location.origin+window.location.pathname+'?doom='+encoded}
+function decodeDoomParam(param){if(!param) return null; try{const parsed=JSON.parse(b64urlDecode(param));return {...DEFAULTS,...parsed};}catch(e){console.warn('Bad doom param',e);return null}}
+function shareText(){const etaStr=$("#eta").textContent, unitName=labelFor(S.unit), countVal=$("#absurd").textContent, qPct=Math.round(S.quantum*100); const sign=signatures[Math.floor(Math.random()*signatures.length)]; return `Target: ${etaStr}. Remaining: ${countVal} ${unitName}. Quantum uncertainty: ${qPct}%. ${sign}`;}
+
+$("#share").addEventListener('click', async () => {
+  if (!S.targetTime) { toastMsg("No doom to share yet."); return; }
+  const url = doomLink();
+  const text = shareText();
+  if (navigator.share) {
+    try { await navigator.share({ title: "Existential Calculator", text, url }); toastMsg("Shared via system sheet."); return; }
+    catch(e){ /* fallback below */ }
+  }
+  try { await navigator.clipboard.writeText(text+"\n"+url); toastMsg("Your doom link is now shareable."); }
+  catch { toastMsg("Copy failed. Long-press to select text."); }
+});
+
+$("#linkOnly").addEventListener('click', async () => {
+  if (!S.targetTime) { toastMsg("No doom to share yet."); return; }
+  try { await navigator.clipboard.writeText(doomLink()); toastMsg("Doom link copied."); }
+  catch { toastMsg("Copy failed. Long-press to select text."); }
+});
+
+/* Midnight whisper */
+setInterval(()=>{const now=new Date();if(now.getHours()===0&&now.getMinutes()===0&&now.getSeconds()<3){morsePlay("TICK TOCK");$("#marquee").innerHTML=`<span class="morse">— · ·  · · —   — · — ·   — · — —   — — —   — — —   — · — ·   — — —   — · — —</span>`;toastMsg("Midnight omen detected. Proceed chaotically.")}},1000);
+
+/* Konami */
+const konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a']; let buf=[];
+window.addEventListener('keydown',e=>{buf.push(e.key);if(buf.length>konami.length) buf.shift();if(konami.every((k,i)=>buf[i]===k)){S.konami=!S.konami;konamiLabel.textContent=`Konami Mode: ${S.konami?'ON':'OFF'}`;toastMsg(S.konami?'Terminal Mode engaged. All numbers now feel important.':'Terminal Mode disengaged. Resume regular absurdity.');document.querySelectorAll('.card,.tile').forEach(el=>{el.style.background=S.konami?'#05080f':'';el.style.borderStyle=S.konami?'solid':''});buf=[]}});
+
+/* Loop */
+setInterval(()=>render(),37);
+
+/* UI helpers */
+function toastMsg(msg){toast.textContent=msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
+function shake(el){el.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:350,iterations:1})}
+
+/* Seed + auto-load */
+function applyDoom(doom){
+  if(doom.mode) $("#mode").value=doom.mode;
+  modeSel.dispatchEvent(new Event('change'));
+  if(doom.eventDate) $("#eventDate").value=doom.eventDate;
+  if(doom.dob) $("#dob").value=doom.dob;
+  if(Number.isFinite(+doom.coffee)) $("#coffee").value=doom.coffee;
+  if(doom.preset) $("#expectPreset").value=doom.preset;
+  if(Number.isFinite(+doom.expect)) $("#expect").value=doom.expect;
+  if(Number.isFinite(+doom.offset)) $("#manualOffset").value=doom.offset;
+  if(doom.smoker) $("#smoker").value=doom.smoker;
+  if(Number.isFinite(+doom.exercise)) $("#exercise").value=doom.exercise;
+  if(doom.sleep) $("#sleep").value=doom.sleep;
+  if(doom.stress) $("#stress").value=doom.stress;
+  if(Number.isFinite(+doom.uncertainty)) $("#uncertainty").value=doom.uncertainty;
+  if(typeof doom.ultra!=='undefined'){ultraToggle.checked=!!doom.ultra; ultraToggle.dispatchEvent(new Event('change'));}
+  if(doom.unit){const r=document.querySelector(`input[name="unit"][value="${doom.unit}"]`); if(r){r.checked=true; S.unit=doom.unit} else {S.unit='jellybeans'}}
+}
+$("#dob").addEventListener('change',()=>$("#calc").click());
+
+// Load from URL (?doom=...) using URL-safe base64
+(function loadFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.has("doom")){
+    const expanded = decodeDoomParam(params.get("doom"));
+    if(expanded) applyDoom(expanded);
+  }
+  if(!$("#dob").value){const d=new Date(); d.setFullYear(d.getFullYear()-40); d.setMonth(7); d.setDate(25); $("#dob").valueAsDate=d }
+  computeEffectiveExpectancy();
+  $("#calc").click();
+})();
+
+/* -------- Live Background: Starfield + Nebula -------- */
+const bg = document.getElementById('livebg');
+const g2 = bg.getContext('2d', { alpha: true, desynchronized: true });
+let DPR = Math.min(2, window.devicePixelRatio || 1);
+let stars = []; 
+let t0 = performance.now();
+let bgOn = true;
+
+function resizeBG(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  bg.width  = Math.floor(bg.clientWidth  * DPR);
+  bg.height = Math.floor(bg.clientHeight * DPR);
+  const area = (bg.width * bg.height) / (1000*1000);
+  const baseCount = Math.floor(120 * Math.max(1, area));
+  stars = [];
+  for(let i=0;i<baseCount;i++){
+    stars.push({ x: Math.random()*bg.width, y: Math.random()*bg.height, r: (Math.random()*1.1 + 0.2) * DPR, z: Math.random()*0.8 + 0.2, tw: Math.random()*6.28 });
+  }
+}
+resizeBG();
+window.addEventListener('resize', resizeBG);
+
+// Parallax via mouse
+let mx = 0, my = 0;
+window.addEventListener('mousemove', e=>{
+  const rect = bg.getBoundingClientRect();
+  mx = ((e.clientX - rect.left)/rect.width)*2 - 1;
+  my = ((e.clientY - rect.top)/rect.height)*2 - 1;
+}, {passive:true});
+
+// Attach toggle
+const bgToggleEl = document.getElementById('bgToggle');
+if (bgToggleEl) bgToggleEl.addEventListener('change', e => { bgOn = e.target.checked; });
+
+// Render loop
+function renderBG(now){
+  if(!bgOn || !g2) return;
+  const dt = (now - t0) / 1000; t0 = now;
+  const q = Math.max(0, Math.min(1, S.quantum || 0.12));
+  const drift = 8 + q*42;
+  const twinkle = 0.3 + q*1.7;
+  const parallax = 10 + q*40;
+
+  g2.clearRect(0,0,bg.width,bg.height);
+  const cx = bg.width*0.5, cy = bg.height*0.5;
+  const t = performance.now()*0.00025;
+
+  const n1x = cx + Math.cos(t*drift)*bg.width*0.18;
+  const n1y = cy + Math.sin(t*drift*0.9)*bg.height*0.18;
+  const n2x = cx + Math.cos((t+7)*drift*0.7)*bg.width*0.22;
+  const n2y = cy + Math.sin((t+11)*drift*0.8)*bg.height*0.22;
+
+  const grd1 = g2.createRadialGradient(n1x,n1y,0, n1x,n1y, Math.max(bg.width,bg.height)*0.7);
+  grd1.addColorStop(0, 'rgba(142,240,255,'+(0.10+q*0.10)+')');
+  grd1.addColorStop(1, 'rgba(0,0,0,0)');
+  g2.fillStyle = grd1; g2.fillRect(0,0,bg.width,bg.height);
+
+  const grd2 = g2.createRadialGradient(n2x,n2y,0, n2x,n2y, Math.max(bg.width,bg.height)*0.8);
+  grd2.addColorStop(0, 'rgba(125,255,179,'+(0.06+q*0.08)+')');
+  grd2.addColorStop(1, 'rgba(0,0,0,0)');
+  g2.fillStyle = grd2; g2.fillRect(0,0,bg.width,bg.height);
+
+  g2.save();
+  g2.globalCompositeOperation = 'lighter';
+  for(const s of stars){
+    const px = s.x + mx * s.z * parallax;
+    const py = s.y + my * s.z * parallax;
+    s.tw += (0.8 + Math.random()*0.6) * dt;
+    const a = 0.25 + Math.abs(Math.sin(s.tw))*twinkle;
+    g2.globalAlpha = Math.min(0.8, a);
+    g2.beginPath();
+    g2.arc(px, py, s.r*(0.8 + Math.sin(s.tw*2)*0.2), 0, Math.PI*2);
+    g2.fillStyle = (s.z>0.6) ? '#bfeeff' : '#9fd8ff';
+    g2.fill();
+    s.y += (0.5 + s.z) * (0.3 + q*1.1) * DPR;
+    if(s.y > bg.height + 10){ s.y = -10; s.x = Math.random()*bg.width; }
+  }
+  g2.restore();
+}
+(function bgLoop(){ const now = performance.now(); renderBG(now); requestAnimationFrame(bgLoop); })();
+
+})();
+</script>
